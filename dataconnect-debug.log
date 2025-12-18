@@ -1,0 +1,22 @@
+I1112 23:09:30.342370   58392 load.go:31] Reloading schema and connectors...
+I1112 23:09:30.529003   58392 control.go:94] [/emulator/ongi 8017] UpdateResources(): done
+Schema: sources: schema\schema.gql [1992B] 
+Connector "example": sources: example\mutations.gql [1243B] example\queries.gql [1801B] 
+I1112 23:09:30.608000   58392 collector.go:107] schema extensions wrote into "C:\\Users\\user\\Desktop\\ongi\\dataconnect\\.dataconnect\\schema"
+Generated sources: main\mutation.gql [13679B] prelude.gql [73251B] main\implicit.gql [1261B] main\input.gql [28173B] main\relation.gql [13746B] main\query.gql [5099B] 
+I1112 23:09:30.608000   58392 load.go:109] Finished reloading
+I1112 23:09:30.613001   58392 dev.go:102] Listening on address (HTTP + gRPC): 127.0.0.1:9399
+I1112 23:09:30.614003   58392 dev.go:102] Listening on address (HTTP + gRPC): [::1]:9399
+I1112 23:09:46.341794   58392 migrate.go:24] Running migration SQL:
+Step 1: CREATE EXTENSION IF NOT EXISTS "uuid-ossp"
+Step 2: CREATE TABLE "public"."movie" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "genre" text NULL, "image_url" text NOT NULL, "title" text NOT NULL, PRIMARY KEY ("id"))
+Step 3: CREATE TABLE "public"."user" ("id" text NOT NULL, "username" character varying(50) NOT NULL, PRIMARY KEY ("id"))
+Step 4: CREATE TABLE "public"."Reviews" ("movie_id" uuid NOT NULL, "user_id" text NOT NULL, "rating" integer NULL, "review_date" date NOT NULL, "review_text" text NULL, PRIMARY KEY ("movie_id", "user_id"), CONSTRAINT "Reviews_movie_id_fkey" FOREIGN KEY ("movie_id") REFERENCES "public"."movie" ("id") ON DELETE CASCADE, CONSTRAINT "Reviews_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."user" ("id") ON DELETE CASCADE)
+Step 5: CREATE INDEX "Reviews_movieId_idx" ON "public"."Reviews" ("movie_id")
+Step 6: CREATE INDEX "Reviews_userId_idx" ON "public"."Reviews" ("user_id")
+Step 7: CREATE TABLE "public"."movie_metadata" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "movie_id" uuid NOT NULL, "description" text NULL, "rating" double precision NULL, "release_year" integer NULL, PRIMARY KEY ("id"), CONSTRAINT "movie_metadata_movie_id_fkey" FOREIGN KEY ("movie_id") REFERENCES "public"."movie" ("id") ON DELETE CASCADE)
+Step 8: CREATE INDEX "movie_metadata_movieId_idx" ON "public"."movie_metadata" ("movie_id")
+Step 9: CREATE UNIQUE INDEX "movie_metadata_movieId_uidx" ON "public"."movie_metadata" ("movie_id")
+I1112 23:09:46.861103   58392 control.go:94] [/emulator/ongi 44e5] UpdateResources(): done
+Schema: sources: schema\schema.gql [1992B] 
+Connector "example": sources: example\mutations.gql [1243B] example\queries.gql [1801B] 
