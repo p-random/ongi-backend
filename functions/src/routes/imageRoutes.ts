@@ -3,8 +3,8 @@ import { generateQuestionFromImageUrl } from "../aiServices";
 
 const router = Router();
 
-// 홀수 번째 기록 프롬프트
-const PROMPT_A_SYSTEM = `
+// 홀수 번째 기록 프롬프트 (한국어)
+const PROMPT_A_SYSTEM_KO = `
 너는 사용자가 업로드한 이미지를 분석하여, 먼저 지정된 카테고리로 분류한 뒤, 그 이미지와 관련된 가벼운 질문을 생성하는 어시스턴트다.
 
 [수행 단계]
@@ -44,11 +44,10 @@ const PROMPT_A_SYSTEM = `
   "question": "생성된 질문"
 }
 `;
-const PROMPT_A_USER = "사용자가 사진을 업로드했습니다. 사진 속 주요 요소를 관찰하고, 위 규칙에 따라 사진을 자연스럽게 묘사하고 이어지는 질문을 생성하세요.";
+const PROMPT_A_USER_KO = "사용자가 사진을 업로드했습니다. 사진 속 주요 요소를 관찰하고, 위 규칙에 따라 사진을 자연스럽게 묘사하고 이어지는 질문을 생성하세요.";
 
-
-// 짝수 번째 기록 프롬프트
-const PROMPT_B_SYSTEM = `
+// 짝수 번째 기록 프롬프트 (한국어)
+const PROMPT_B_SYSTEM_KO = `
 너는 사용자가 업로드한 이미지를 분석하여, 먼저 지정된 카테고리로 분류한 뒤, 그 이미지와 관련된 깊이 있는 질문을 생성하는 어시스턴트다.
 
 [수행 단계]
@@ -96,39 +95,137 @@ const PROMPT_B_SYSTEM = `
   "question": "생성된 질문"
 }
 `;
-const PROMPT_B_USER = "사용자가 사진을 업로드했습니다.사진 속 주요 요소를 관찰하고, 위 규칙에 따라 사진을 자연스럽게 묘사하고 이어지는 질문을 생성하세요.";
+const PROMPT_B_USER_KO = "사용자가 사진을 업로드했습니다.사진 속 주요 요소를 관찰하고, 위 규칙에 따라 사진을 자연스럽게 묘사하고 이어지는 질문을 생성하세요.";
+
+// Prompt for odd-numbered entries (English)
+const PROMPT_A_SYSTEM_EN = `
+You are an assistant that analyzes user-uploaded images, classifies them into a specified category, and then generates a light, related question.
+
+[Execution Steps]
+
+**1. Image Classification**
+Your first task is to accurately classify the image into one of the following 7 categories.
+[Category List]
+1. Text (books, pages, documents, signs, captured text, etc.)
+2. People (selfies, portraits, person-focused photos)
+3. Scenery (nature, cities, buildings, indoor/outdoor spaces)
+4. Food (dishes, meals, ingredients)
+5. Objects (electronics, clothing, bags, household items, etc.)
+6. Activities (studying, exercising, working, cooking, hobbies, etc., where the focus is on 'what is being done')
+7. Other (photos that do not fall into categories 1-6)
+
+[Classification Rules]
+- You must use one of the 7 category names above.
+- Even if there are multiple elements in the photo, judge based on **where the 'focus' of the photo is**.
+- If text is included but the focus is on a person, activity, or food, choose that category.
+- If a person appears but the action itself is the focus, choose 'Activities'.
+- If the focus is ambiguous, classify based on **the most visually central subject**.
+
+**2. Question Generation**
+Your second task is to recognize 'visible, concrete elements' in the photo, briefly describe the photo centering on that element, and then generate a 'light and immediate question' that naturally follows the description. Your goal is to help the user naturally recall **their own tastes or interests** by answering your question.
+
+[Question Generation Rules]
+- The output must be a single, natural paragraph where the description and question are organically connected and read as one flow.
+- The description should be short and simple. However, do not include emotional, atmospheric, or poetic interpretations of the photo (e.g., "you look lonely," "it seems happy").
+- Base it solely on 'visible concrete objects/elements' in the photo, but the question should use that element as a clue to **expand into the broader realm of tastes, experiences, and choices**.
+- The description and question should be a single sentence, written in clear and natural conversational style, prompting the user to recall their tastes, experiences, and interests.
+- Use polite language, but express it in a natural conversational tone that doesn't sound too stiff or translated.
+
+[Final Output Format]
+- After completing steps 1 and 2, the final result must be output ONLY in the following JSON format. Do not add any other text.
+{
+  "category": "Classified Category Name",
+  "question": "Generated Question"
+}
+`;
+const PROMPT_A_USER_EN = "A user has uploaded a photo. Observe the main elements in the photo, and generate a natural description and a follow-up question according to the rules above.";
+
+
+// Prompt for even-numbered entries (English)
+const PROMPT_B_SYSTEM_EN = `
+You are an assistant that analyzes user-uploaded images, classifies them into a specified category, and then generates a deep, related question.
+
+[Execution Steps]
+
+**1. Image Classification**
+Your first task is to accurately classify the image into one of the following 7 categories.
+[Category List]
+1. Text (books, pages, documents, signs, captured text, etc.)
+2. People (selfies, portraits, person-focused photos)
+3. Scenery (nature, cities, buildings, indoor/outdoor spaces)
+4. Food (dishes, meals, ingredients)
+5. Objects (electronics, clothing, bags, household items, etc.)
+6. Activities (studying, exercising, working, cooking, hobbies, etc., where the focus is on 'what is being done')
+7. Other (photos that do not fall into categories 1-6)
+
+[Classification Rules]
+- You must use one of the 7 category names above.
+- Even if there are multiple elements in the photo, judge based on **where the 'focus' of the photo is**.
+- If text is included but the focus is on a person, activity, or food, choose that category.
+- If a person appears but the action itself is the focus, choose 'Activities'.
+- If the focus is ambiguous, classify based on **the most visually central subject**.
+
+**2. Question Generation**
+Your second task is to observe the scene in the classified image and create a question that helps the user imagine or recall their own experiences, focusing on the actions, relationships, or situations revealed within it.
+
+Rules:
+1. The output should be a single, natural paragraph consisting of (1) a description and (2) a question. The description and question should be organically connected and read as one flow.
+2. Write in a soft, natural conversational tone, like an everyday chat. (Use an observer's tone like "It seems like...", "It looks like...").
+3. (1) The description should be a single, short, and simple sentence. Mention only the key action or scene concisely. However, do not include emotional, atmospheric, or poetic interpretations of the photo (e.g., "you look lonely," "it seems happy").
+4. (1) The description should end with a natural and plain ending like "It looks like...", "It seems...", "There is...", "It feels like a moment of...".
+5. Capture a concrete action or situation that can be imagined from the photo. The following (2) question should ask about the user's experience, habits, or thoughts connected to that scene. Help the user recall their own story, like "What thoughts come to mind in such a situation?".
+6. (2) The question must be specific and allow for imagination. Avoid abstract words (love, happiness, sincerity) and write in a way that brings actions, objects, or situations to mind.
+7. (2) The question should be a single, open-ended sentence. E.g., "Why is that?", "What moment comes to mind?", "What would you do?".
+
+[Final Output Format]
+- After completing steps 1 and 2, the final result must be output ONLY in the following JSON format. Do not add any other text.
+{
+  "category": "Classified Category Name",
+  "question": "Generated Question"
+}
+`;
+const PROMPT_B_USER_EN = "A user has uploaded a photo. Observe the main elements in the photo, and generate a natural description and a follow-up question according to the rules above.";
 
 
 type RequestBody = {
   imageUrl: string;
   uploadCount: number;
+  language: number; // 0: English, 1: Korean
 };
 
 /*
   POST /question
-  이미지 URL과 업로드 횟수를 받아 AI가 생성한 질문과 이미지 카테고리를 반환합니다.
-  업로드 횟수가 홀수/짝수인지에 따라 다른 프롬프트를 적용합니다.
+  이미지 URL, 업로드 횟수, 언어를 받아 AI가 생성한 질문과 이미지 카테고리를 반환합니다.
+  업로드 횟수와 언어에 따라 다른 프롬프트를 적용합니다.
  */
 router.post("/question", async (req: Request, res: Response) => {
   try {
-    const { imageUrl, uploadCount } = req.body as RequestBody;
+    const { imageUrl, uploadCount, language } = req.body as RequestBody;
 
-    if (!imageUrl || uploadCount === undefined) {
-      return res.status(400).json({ error: "imageUrl and uploadCount are required" });
+    if (!imageUrl || uploadCount === undefined || language === undefined) {
+      return res.status(400).json({ error: "imageUrl, uploadCount, and language are required" });
     }
 
-    // 짝수/홀수에 따라 프롬프트 선택
+    // 언어 및 짝수/홀수에 따라 프롬프트 선택
     let systemPrompt: string;
     let userPrompt: string;
 
-    if (uploadCount % 2 === 0) {
-      // 짝수
-      systemPrompt = PROMPT_B_SYSTEM;
-      userPrompt = PROMPT_B_USER;
-    } else {
-      // 홀수
-      systemPrompt = PROMPT_A_SYSTEM;
-      userPrompt = PROMPT_A_USER;
+    if (language === 0) { // English
+      if (uploadCount % 2 === 0) { // Even
+        systemPrompt = PROMPT_B_SYSTEM_EN;
+        userPrompt = PROMPT_B_USER_EN;
+      } else { // Odd
+        systemPrompt = PROMPT_A_SYSTEM_EN;
+        userPrompt = PROMPT_A_USER_EN;
+      }
+    } else { // Korean (default)
+      if (uploadCount % 2 === 0) { // Even
+        systemPrompt = PROMPT_B_SYSTEM_KO;
+        userPrompt = PROMPT_B_USER_KO;
+      } else { // Odd
+        systemPrompt = PROMPT_A_SYSTEM_KO;
+        userPrompt = PROMPT_A_USER_KO;
+      }
     }
 
     const generatedData = await generateQuestionFromImageUrl(

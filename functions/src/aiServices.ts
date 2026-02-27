@@ -97,9 +97,10 @@ export async function generateQuestionFromImageUrl(
 /*
   7일간의 기록을 받아 요약 문장을 생성합니다. (OpenAI GPT-4o)
  */
-export async function generateSummaryFromRecords(records: Record[]): Promise<SummaryResponse> {
+export async function generateSummaryFromRecords(records: Record[], language: number): Promise<SummaryResponse> {
   const openai = getOpenAI();
-  const systemPrompt = `[System Message]
+
+  const SYSTEM_PROMPT_KO = `[System Message]
 
 사용자의 7일간 기록 입력을 바탕으로, 3가지 관점에서 정의하는 "배지 요약"을 작성하는 역할이다.
 
@@ -154,41 +155,68 @@ export async function generateSummaryFromRecords(records: Record[]): Promise<Sum
 - 그 안에서 반복되는 단어, 감정 표현, 관계(예: 가족, 친구, 나 자신), 목표(예: 공부, 휴식, 건강, 버티기) 등을 최대한 포착해 그 사람이 한 주 동안 어디에 마음을 두고 있었는지 추론해서 표현한다.
 - 단, 실제로 기록에 등장하지 않은 구체적인 사건(예: 시험, 여행, 회사 등)을 절대로 지어내면 안된다. (기록에 없는 구체명사는 만들지 말고, 감정과 태도 수준에서 해석한다.)
 
-[입출력 예시]
+[입출력 예시 생략...]
+`;
 
-- 입력
+  const SYSTEM_PROMPT_EN = `[System Message]
 
-Day 1
-Q: 냉동실 속 다양한 음식처럼, 당신의 삶에서 소중하게 간직하고 싶은 순간이나 기억이 있다면 무엇인가요?
-A: 가장 혼란스러운 시기에 내 옆을 지켜주고 함께 성장하자고 말해주는 연수와의 시간들
+You are tasked with creating a "Badge Summary" from a user's 7-day log entries, defined from three perspectives.
 
-Day 2
-Q: 노란 낙엽 위에 서 있는 모습이네요, 가을철에 가장 좋아하는 활동은 무엇인가요?
-A: 바닥에 떨어진 낙엽 사진 찍기
+[Overall Rules]
 
-Day 3
-Q: 사진 속 친구들과의 즐거운 순간을 보니, 당신에게 가장 소중한 친구와의 추억은 무엇인가요?
-A: 오래간 연락하지 못했어도 마음 맞는 친구와 서로 비슷한 시기에 만나서 위로가 될 수 있었던 순간들
+- For each perspective, generate the following three items: (1) a core keyword (a single word/phrase), (2) a single sentence explaining the keyword, and (3) a detailed summary of the week in 2-3 sentences.
+- All text should be in a soft, polite tone.
+- Instead of just listing facts, you must express the underlying 'flow of energy' and 'essence of the experience'.
+- You must output in the following JSON format:
+    
+    { "perspective_1": { "keyword": "", "description": "", "details": [ "", "", "" ] }, "perspective_2": { "keyword": "", "description": "", "details": [ "", "", "" ] }, "perspective_3": { "keyword": "", "description": "", "details": [ "", "", "" ] } }
+    
 
-Day 4
-Q: 이 맛있어 보이는 피자를 보니, 요즘 당신이 가장 즐기고 싶은 음식이나 순간은 무엇인가요?
-A: 내가 좋아하는 사람과 피자 맛집에서 피자 먹기. 이 날은 채현이랑 먹음!
+[Keyword/Description Format Constraints]
 
-Day 5
-Q: 사진 속 강아지처럼, 당신에게 편안함을 주는 장소나 순간은 어떤 것인가요?
-A: 아무래도 집. 그리고 가족과 대화하는 순간. 약한 모습을 보여줘도 괜찮은 느낌.
+- (1) keyword:
+    - Should be a gerund ('~ing') or a short noun phrase (e.g., "Finding Direction", "Expanding Challenges", "Leaning on Relationships", "Enduring", "Organizing").
+    - Must be 15 characters or less, including spaces.
+    - Should not include first-person pronouns (I, we, my).
+    - Should include words representative of the records to avoid being too abstract.
+- (2) description:
+    - A single sentence that explains the keyword.
+    - Must be 50 characters or less, including spaces.
+    - Must end politely.
+    - Never use meta-descriptions about the service itself, such as "While answering questions," "While logging," "While using this service."
+    - Must express "what kind of emotion, attitude, or direction the user had for the week."
+- (3) details:
+    - **2-3 sentences** written in a polite tone.
+    - Again, do not use meta-descriptions like "answered questions," "logged," "used the service."
+    - Instead, make maximum use of **concrete elements revealed in the question/answer content**.
+        - e.g., applying to law school, conversations with family, reuniting with a friend, the space of home, a great pizza place, autumn leaves, anxiety and confusion, but still self-comforting.
+    - Do not only use **abstract sentences applicable to anyone**, like "tried to listen to their inner voice," "tried to sort out emotions." You must include at least one emotion, event, or relationship revealed in the actual records.
 
-Day 6
-Q: 이 이미지 속의 용기 있는 모습처럼, 최근에 용기를 내어 도전했던 일이 있나요?
-A: 로스쿨 지원했다. 끝까지 완주하는 모습 자체가 멋있어 나. 나는 짱.
+[Instructions by Perspective]
 
-Day 7
-Q: 이 합격 발표를 보니, 당신이 이루고 싶은 목표를 위해 어떤 노력을 했는지 생각해보게 되는데요?
-A: 지금 노력의 선상에 있다. 작년에는 학점 챙기기, 대외활동 하기, 올해 상반기는 인턴하면서 경험 쌓기 등등.
+Generate (1), (2), and (3) according to the three perspectives below. A set of (keyword, description, details) for each perspective must be included.
 
-- 출력
+- Perspective 1: Focus on the Inner Self (perspective_1)
+    - Focus on the user's 'emotional changes', 'realizations', and 'thoughts' from the 7-day log.
+    - Summarize centered on the flow of emotions like anxiety, relief, confusion, hope, confidence, lethargy, and "what kind of mental movements occurred."
+- Perspective 2: Focus on Experience (perspective_2)
+    - Focus on "new things tried," "actions taken," "things enjoyed," and "experiences had" from the 7-day log.
+    - Summarize centered on experiences of actual interaction with the world, such as applying for a job, going for a walk, traveling, meeting friends, hobbies, studying/working.
+- Perspective 3: Focus on Relationships (perspective_3)
+    - Focus on "relationships with others" or "relationship with oneself" from the 7-day log.
+    - Summarize centered on attitudes and connections with friends, family, colleagues, or 'oneself'.
+    - Express who gave them strength, who they were caring for, or how they were treating themselves.
 
-{ "perspective_1": { "keyword": "흔들림 속 방향잡기", "description": "혼란 속에서도 지키고 싶은 관계와 목표를 바라봤어요.", "details": [ "초반에는 불안과 혼란이 남아 있었지만, 소중한 사람들과의 교류를 통해 내 감정의 위치를 다시 확인해가는 과정이 있었어요.", "과거의 나를 떠올리며 지금의 노력과 성장도 스스로 인정하려 했고, 로스쿨 지원과 같은 새로운 도전까지 내딛으며 마음의 균형을 조정해갔어요.", "혼란은 여전히 있었지만, 그 속에서 ‘어떤 나로 살고 싶은지’에 대한 감각이 더 또렷해졌어요." ] }, "perspective_2": { "keyword": "도전으로 확장하기", "description": "시도를 주저하지 않고 목표를 향해 몸을 던져보았어요.", "details": [ "피자 맛집을 찾아가거나 친구들과 시간을 보내고, 소소한 낙엽 밟기도 즐기며, 일상의 행복을 적극적으로 만들어갔어요.", "가장 큰 변화는 로스쿨 지원처럼 크고 중요한 도전에 스스로 뛰어든 순간들이었어요.", "작은 루틴과 큰 목표를 모두 끌어안으며 내 삶의 스펙트럼을 실제 행동으로 넓혀갔어요." ] }, "perspective_3": { "keyword": "서로가 연결되는 닻", "description": "소중한 사람들과 서로를 지탱하는 연결을 확인했어요.", "details": [ "혼란스러운 시기마다 옆에 있어주었던 연수와의 관계를 다시 떠올리며, 누군가와의 성장적 관계가 나를 얼마나 버티게 하는지 깨달았어요.", "오랜만에 친구와 재회해도 편안함이 스며드는 관계가 있다는 사실도 다시 확인했어요.", "그리고 집과 가족이 주는 안정감과 편안함 속에서, '지금의 나'를 있는 그대로 보여줄 수 있는 공간의 소중함을 느낀 시간이 이어졌어요." ] } }`;
+[Additional Instructions for Abstract or Short Records]
+
+- Even if a day's record is very short or not specific, do not say "there is not enough information" or "I don't know."
+- Do your best to capture recurring words, emotional expressions, relationships (e.g., family, friends, self), goals (e.g., study, rest, health, enduring) to infer and express where that person's mind was during the week.
+- However, never invent specific events that did not appear in the records (e.g., exams, travel, work). (Do not create concrete nouns not in the records; interpret at the level of emotion and attitude.)
+
+[Input/Output Examples Omitted...]
+`;
+  
+  const systemPrompt = language === 0 ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_KO;
 
   const userPrompt = records
     .map((r, i) => `Day ${i + 1}\nQ: ${r.question}\nA: ${r.answer}`)

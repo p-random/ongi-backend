@@ -60,6 +60,12 @@ router.post("/", async (req: Request, res: Response) => {
     const accountData = accountDoc.data();
     const fcmToken = accountData?.fcmToken;
 
+    const { language } = req.body as { language: number };
+
+    if (language === undefined) {
+      return res.status(400).json({ error: "language is required" });
+    }
+
     const recordsSnapshot = await db.collection("Record")
       .where("uid", "==", uid)
       .orderBy("createdAt", "desc")
@@ -88,7 +94,7 @@ router.post("/", async (req: Request, res: Response) => {
 
     // 3. 요약 생성과 이미지 생성(안전한 프롬프트 사용)을 병렬로 진행
     const [summaryResult, imageResult] = await Promise.allSettled([
-      generateSummaryFromRecords(records),
+      generateSummaryFromRecords(records, language),
       generateAndStoreImage(uid, safePrompt),
     ]);
 
